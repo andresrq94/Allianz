@@ -1,24 +1,30 @@
-#this is to test
 import pandas as pd
+import sqlalchemy
 
-from sqlalchemy import create_engine
-# Especifica la ruta del archivo y el delimitador
-ruta = 'C:/Users/AndresRoldan/Downloads/allianz_db.csv'
+# Path to your CSV file
+ruta = 'C:/Users/AndresRoldan/Desktop/Andres/Allianz/allianz_db.csv'
 
-# Lee el archivo delimitado en un DataFrame
+# Load the CSV file into a DataFrame
 df = pd.read_csv(ruta)
 
-# Configura la cadena de conexión
-servidor = 'DESKTOP-RRLTHKB\SQLEXPRESS'  # Nombre del servidor SQL Server Express
-base_datos = 'Allianz'     # Cambia por el nombre de tu base de datos
-usuario = 'usuario_sql'              # Usuario de SQL Server (si usas autenticación SQL)
-contrasena = 'contraseña_sql'        # Contraseña del usuario
-driver = 'ODBC Driver 17 for SQL Server'
+# Rename 'timestamp' to 'sale_date'
+df = df.rename(columns={'timestamp': 'sale_date'})
 
-# Crear el motor de conexión
-cadena_conexion = f'mssql+pyodbc://{usuario}:{contrasena}@{servidor}/{base_datos}?driver={driver}'
-engine = create_engine(cadena_conexion)
+#Change sale_date column format to date
+df['sale_date'] = pd.to_datetime(df['sale_date'], format='%m/%d/%Y %H:%M')
 
 
-df.to_sql(name = 'sales', engine, if_exists='replace', index=False)
-print("Datos cargados exitosamente.")
+# Connection details
+servidor = 'localhost\\SQLEXPRESS'
+base_datos = 'Allianz'
+usuario = 'user_andres'
+contrasena = '123456'
+driver = 'ODBC Driver 18 for SQL Server'
+
+# Adjusted connection string
+connection_string = f'mssql+pyodbc://{usuario}:{contrasena}@{servidor}/{base_datos}?driver={driver}&TrustServerCertificate=yes'
+engine = sqlalchemy.create_engine(connection_string)
+
+# Upload DataFrame to SQL Server
+df.to_sql(name='sales', con=engine, if_exists='replace', index=False)
+print("Data uploaded successfully.")
