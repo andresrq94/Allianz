@@ -19,6 +19,7 @@ The script uses a JSON configuration file to manage database connection details 
 
 JSON Configuration File Structure
 Create a JSON file named config_file.json with the following structure:
+
 {
     "database": {
         "server": "yourserver",
@@ -36,6 +37,7 @@ Create a JSON file named config_file.json with the following structure:
         "encrypt": false  // Set to true to enable encryption
     }
 }
+
 database: Contains connection details for your SQL Server database.
 file: Specifies the path to the CSV file and the optional chunksize parameter.
 encryption: Controls whether data should be encrypted during processing and stores the encryption key.
