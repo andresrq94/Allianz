@@ -44,15 +44,24 @@ Code Overview
 The main functionalities of the script are organized into several functions:
 
 load_config: Loads the JSON configuration file and checks for required keys.
+
 load_data: Loads data from the specified CSV file in chunks, converting column names to lowercase and string values to uppercase.
+
 validate_data: Validates data for missing values and outliers.
 encrypt_data: Encrypts sensitive data if encryption is enabled in the configuration.
+
 filter_existing_data: Filters out rows from the DataFrame that already exist in the database based on a composite key.
+
 extract_customer_dimension: Extracts unique customer data for the Customer Dimension table.
+
 extract_product_dimension: Extracts unique product data for the Product Dimension table.
+
 create_sales_df: Creates a sales DataFrame that includes customer IDs and product IDs.
+
 upload_data: Uploads the sales data to the SQL Server database.
+
 upload_dimension: Uploads customer and product dimension data to the SQL Server database.
+
 main: The main function that orchestrates the loading, processing, and uploading of data.
 
 The JSON configuration is crucial for setting up the environment. Below is a detailed explanation of each section:
