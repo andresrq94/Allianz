@@ -1,0 +1,17 @@
+{
+    "database": {
+        "server": "your_server",
+        "database": "your_db",
+        "user": "your_user",
+        "password": "your_pswrd",
+        "driver": "your_driver"
+    },
+    "file": {
+        "path": "local csv path",
+        "chunksize": 10000
+    },
+    "encryption": {
+        "key": "",
+        "encrypt": false
+    }
+}
