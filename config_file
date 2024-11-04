@@ -1,17 +1,17 @@
 {
     "database": {
-        "server": "localhost\\SQLEXPRESS",
-        "database": "Allianz",
-        "user": "user_andres",
-        "password": "123456",
-        "driver": "ODBC Driver 18 for SQL Server"
+        "server": "your_server",
+        "database": "your_db",
+        "user": "your_user",
+        "password": "your_pswrd",
+        "driver": "your_driver"
     },
     "file": {
-        "path": "C:/Users/AndresRoldan/Desktop/Andres/Allianz/original_file.csv",
+        "path": "local csv path",
         "chunksize": 10000
     },
     "encryption": {
-        "key": "1MLGnD-uSdTC-3CtWDhotOBR3cLllJXvz2-9M3_ToKc=",
+        "key": "",
         "encrypt": false
     }
 }
