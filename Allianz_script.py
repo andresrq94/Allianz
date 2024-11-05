@@ -5,6 +5,9 @@ from sqlalchemy.exc import SQLAlchemyError
 import logging
 import json
 from cryptography.fernet import Fernet
+import os
+import datetime
+import re
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -67,11 +70,16 @@ def save_config(config_path, config):
 
 def validate_data(df):
     """Validate data for missing values, outliers, and inconsistencies."""
+    # Get the current year
+    current_year = datetime.datetime.now().year
     if df.isnull().any().any():
         logging.warning("Missing values found in the data.")
-        df.fillna({'income range': 'Middle Earner', 'age': df['age'].mean()}, inplace=True)
+        df.fillna({'income_range': 'Middle Earner', 'year_of_birth': df['year_of_birth'].mean()}, inplace=True)
+
+    # Calculate age from year_of_birth and check for age range constraints
+    df['age'] = current_year - df['year_of_birth']
     if not df['age'].between(17, 100).all():
-        logging.warning("Outliers detected in 'age'.")
+        logging.warning("Outliers detected in 'year_of_birth'.")
         df = df[df['age'].between(17, 100)]
     if (df['premium'] < 0).any():
         logging.warning("Negative Premium values found.")
@@ -125,10 +133,9 @@ def filter_existing_data(df, connection, table_name):
         raise
 
 
-
 def extract_customer_dimension(df):
     """Extract unique customer data for the Customer Dimension table."""
-    customer_cols = ['personal_id', 'name', 'country', 'age', 'income_range']
+    customer_cols = ['personal_id', 'name', 'country', 'year_of_birth', 'income_range']
     customer_df = df[customer_cols].drop_duplicates().reset_index(drop=True)
 
     global last_customer_id  # Access the global variable
@@ -136,7 +143,7 @@ def extract_customer_dimension(df):
     # Create a unique transaction_id that continues from the last transaction_id
     customer_df['customer_id'] = range(last_customer_id + 1, last_customer_id + len(customer_df) + 1)
 
-    customer_df = customer_df[['customer_id', 'personal_id', 'name', 'country','age','income_range']]
+    customer_df = customer_df[['customer_id', 'personal_id', 'name', 'country','year_of_birth','income_range']]
 
     return customer_df
 
@@ -162,7 +169,7 @@ def create_sales_df(df, customer_df, product_df):
     global last_transaction_id  # Access the global variable
 
     # Check if required columns exist
-    required_columns = ['timestamp', 'quantity', 'company', 'product', 'premium', 'personal_id', 'name', 'country', 'age', 'income_range']
+    required_columns = ['timestamp', 'quantity', 'company', 'product', 'premium', 'personal_id', 'name', 'country', 'year_of_birth', 'income_range']
     for col in required_columns:
         if col not in df.columns:
             logging.error(f"Missing column in DataFrame: {col}")
@@ -185,9 +192,9 @@ def create_sales_df(df, customer_df, product_df):
         logging.warning("product_id not found in sales_df after merging with product_df.")
 
     # Create a unique key for merging customers
-    customer_df['merge_key'] = customer_df['personal_id'] + customer_df['name'] + customer_df['country'] + customer_df['age'].astype(str) + customer_df['income_range']
+    customer_df['merge_key'] = customer_df['personal_id'] + customer_df['name'] + customer_df['country'] + customer_df['year_of_birth'].astype(str) + customer_df['income_range']
     sales_df['customer_merge_key'] = sales_df['personal_id'] + sales_df['name'] + sales_df['country'] + sales_df[
-        'age'].astype(str) + sales_df['income_range']
+        'year_of_birth'].astype(str) + sales_df['income_range']
 
     # Merge to get customer_id
     sales_df = sales_df.merge(customer_df[['merge_key', 'customer_id']], how='left',
@@ -207,8 +214,10 @@ def create_sales_df(df, customer_df, product_df):
 
     sales_df = sales_df[['transaction_id','customer_id', 'product_id', 'quantity','sale_date']]
 
+    # Replace all double spaces with underscores in the 'product' and 'name' columns
+    product_df['product'] = product_df['product'].str.replace(" ", "_")
+    customer_df['name'] = customer_df['name'].str.replace(" ", "_")
 
-    # Split the 'product' column in product_df
     product_split = product_df['product'].str.split('|', expand=True)
 
     # Check how many columns were created
@@ -217,7 +226,7 @@ def create_sales_df(df, customer_df, product_df):
     else:
         logging.warning(f"Unexpected number of columns when splitting 'product'. Found: {product_split.shape[1]}")
 
-    # Split the 'name' column in customer_df
+    # Split the 'name' column in customer_df, removing spaces around the delimiter only
     customer_split = customer_df['name'].str.split('//', expand=True)
 
     # Check how many columns were created
@@ -254,6 +263,13 @@ def upload_data(df, connection_string, table_name='sales', chunk_size=1000, sche
         logging.error(f"Error uploading data to SQL Server: {e}")
         raise
 
+def save_to_csv(path, connection_string, table_name):
+    """Save a DataFrame from a SQL table to a CSV file, replacing existing content."""
+    query = f"SELECT * FROM {table_name}"
+    df = pd.read_sql(query, connection_string)
+    df.to_csv(path, index=False)
+    logging.info(f"{table_name} data saved to CSV at {path}.")
+
 def upload_dimension(df, connection_string, table_name, schema='dbo'):
     """Upload DataFrame to SQL Server, only uploading new rows."""
     try:
@@ -279,7 +295,7 @@ def upload_dimension(df, connection_string, table_name, schema='dbo'):
 
 def main():
     # Path to your JSON config file
-    config_path = 'C:/Users/AndresRoldan/Desktop/Andres/Allianz/config_file.json'
+    config_path = 'C:/Users/AndresRoldan/Desktop/Andres/Allianz/python_assignment/config/config_file.json'
 
     # Load configuration
     config = load_config(config_path)
@@ -301,6 +317,9 @@ def main():
         f"{config['database']['server']}/{config['database']['database']}?driver={config['database']['driver']}&TrustServerCertificate=yes"
     )
 
+    # Define the output CSV file path
+    output_base_path = config['file']['output_path']
+
     try:
         for chunk in load_data(config['file']['path'], chunksize = config_chunk_size):
             chunk = validate_data(chunk)
@@ -317,6 +336,20 @@ def main():
             upload_dimension(customer_df, connection_string, table_name='dim_customer')
             upload_dimension(product_df, connection_string, table_name='dim_product')
             upload_data(sales_df, connection_string, table_name='sales')
+
+            product_df.drop(columns=['composite_key'], inplace=True, errors='ignore')
+            customer_df.drop(columns=['composite_key'], inplace=True, errors='ignore')
+            sales_df.drop(columns=['composite_key'], inplace=True, errors='ignore')
+
+        try:
+            # Save customer, product, and sales data to CSV
+            save_to_csv(os.path.join(output_base_path, 'dim_customer.csv'), connection_string,
+                        table_name='dim_customer')
+            save_to_csv(os.path.join(output_base_path, 'dim_product.csv'), connection_string, table_name='dim_product')
+            save_to_csv(os.path.join(output_base_path, 'sales.csv'), connection_string, table_name='sales')
+
+        except Exception as e:
+            logging.error(f"An error occurred: {e}")
 
     except Exception as e:
         logging.error(f"An error occurred in the main process: {e}")
