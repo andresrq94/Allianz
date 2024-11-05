@@ -8,7 +8,8 @@
     },
     "file": {
         "path": "local csv path",
-        "chunksize": 10000
+        "chunksize": 10000,
+        "output_path": "local csv output" 
     },
     "encryption": {
         "key": "",
