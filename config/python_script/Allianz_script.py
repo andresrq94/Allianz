@@ -295,7 +295,7 @@ def upload_dimension(df, connection_string, table_name, schema='dbo'):
 
 def main():
     # Path to your JSON config file
-    config_path = 'C:/Users/AndresRoldan/Desktop/Andres/Allianz/python_assignment/config/config_file.json'
+    config_path = 'your config.json file path'
 
     # Load configuration
     config = load_config(config_path)
